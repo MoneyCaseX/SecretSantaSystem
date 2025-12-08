@@ -167,7 +167,7 @@ const AdminDashboard = () => {
                         <div className="bg-white shadow rounded-xl overflow-hidden">
                             <table className="w-full text-left">
                                 <thead className="bg-gray-100 text-sm">
-                                    <tr><th className="p-4">Name</th><th className="p-4">Phone</th><th className="p-4">Dept</th><th className="p-4">Status</th></tr>
+                                    <tr><th className="p-4">Name</th><th className="p-4">Phone</th><th className="p-4">Dept</th><th className="p-4 text-center">Has Picked?</th><th className="p-4 text-center">Is Chosen?</th></tr>
                                 </thead>
                                 <tbody className="divide-y text-sm">
                                     {dbPlayers.map(p => (
@@ -175,10 +175,27 @@ const AdminDashboard = () => {
                                             <td className="p-4 font-medium">{p.name}</td>
                                             <td className="p-4 text-gray-500">{p.phone}</td>
                                             <td className="p-4 text-gray-500">{p.department}</td>
-                                            <td className="p-4">{p.is_chosen ? '✅ Match Found' : '⏳ Waiting'}</td>
+                                            <td className="p-4 text-center">
+                                                {p.my_santa_of_id ?
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                        ✅ Done
+                                                    </span>
+                                                    :
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                        ⏳ Pending
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                {p.is_chosen ?
+                                                    <span className="text-xs font-bold text-red-600">Taken 🔴</span>
+                                                    :
+                                                    <span className="text-xs font-bold text-green-600">Avail 🟢</span>
+                                                }
+                                            </td>
                                         </tr>
                                     ))}
-                                    {dbPlayers.length === 0 && <tr><td colSpan="4" className="p-8 text-center text-gray-400">Pool is empty</td></tr>}
+                                    {dbPlayers.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-400">Pool is empty</td></tr>}
                                 </tbody>
                             </table>
                         </div>
