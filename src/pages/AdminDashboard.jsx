@@ -3,6 +3,7 @@ import Header from '../components/Header';
 import PlayerInput from '../components/PlayerInput';
 import PlayerList from '../components/PlayerList';
 import { Upload, Users, RefreshCw, Trash2, CheckCircle, XCircle, Edit } from 'lucide-react';
+import { DEPARTMENTS } from '../constants';
 
 const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState('pool'); // 'pool' | 'inbox'
@@ -102,7 +103,7 @@ const AdminDashboard = () => {
         const pName = player.name.trim();
         const existing = players.find(p => p.name.toLowerCase() === pName.toLowerCase());
         if (existing) { alert("Already in staging"); return; }
-        setPlayers([...players, { ...player, department: player.department || 'General' }]);
+        setPlayers([...players, { ...player, department: player.department || DEPARTMENTS[0] }]);
     };
 
     const handleImportCSV = (newP) => setPlayers([...players, ...newP]);

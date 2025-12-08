@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import { Search, Gift, AlertCircle, Building2 } from 'lucide-react';
-
-const DEPARTMENTS = [
-    "Development", "Sales", "Marketing", "HR", "Accounting", "Management", "Operations", "General"
-];
+import { DEPARTMENTS } from '../constants';
 
 const UserPortal = () => {
     const [name, setName] = useState('');

@@ -24,7 +24,7 @@ const PlayerInput = ({ onAddPlayer, onImportCSV }) => {
             });
             setName('');
             setPhone('');
-            setDepartment('General');
+            setDepartment(DEPARTMENTS[0]);
         } else {
             alert("Name and Phone are required.");
         }
