@@ -1,5 +1,10 @@
+import React, { useState } from 'react';
+import Header from '../components/Header';
+import PlayerInput from '../components/PlayerInput';
+import PlayerList from '../components/PlayerList';
+import { Upload, Users, RefreshCw, Trash2 } from 'lucide-react';
+import { db } from '../firebase';
 import { collection, addDoc, writeBatch, doc, getDocs, deleteDoc, query, where, runTransaction } from 'firebase/firestore';
-import { Trash2, RefreshCw, Upload, Users } from 'lucide-react';
 
 const AdminDashboard = () => {
     const [players, setPlayers] = useState([]); // Local staging
@@ -182,3 +187,5 @@ const AdminDashboard = () => {
         </div>
     );
 };
+
+export default AdminDashboard;
