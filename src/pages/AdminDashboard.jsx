@@ -167,35 +167,54 @@ const AdminDashboard = () => {
                         <div className="bg-white shadow rounded-xl overflow-hidden">
                             <table className="w-full text-left">
                                 <thead className="bg-gray-100 text-sm">
-                                    <tr><th className="p-4">Name</th><th className="p-4">Phone</th><th className="p-4">Dept</th><th className="p-4 text-center">Has Picked?</th><th className="p-4 text-center">Is Chosen?</th></tr>
+                                    <tr>
+                                        <th className="p-4">Name</th>
+                                        <th className="p-4">Phone</th>
+                                        <th className="p-4">Dept</th>
+                                        <th className="p-4 text-center bg-blue-50 text-blue-900 border-l border-r border-white">➡️ Picked Who?</th>
+                                        <th className="p-4 text-center bg-purple-50 text-purple-900 border-r border-white">⬅️ Picked By?</th>
+                                        <th className="p-4 text-center">Status</th>
+                                    </tr>
                                 </thead>
                                 <tbody className="divide-y text-sm">
-                                    {dbPlayers.map(p => (
-                                        <tr key={p.id}>
-                                            <td className="p-4 font-medium">{p.name}</td>
-                                            <td className="p-4 text-gray-500">{p.phone}</td>
-                                            <td className="p-4 text-gray-500">{p.department}</td>
-                                            <td className="p-4 text-center">
-                                                {p.my_santa_of_id ?
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                        ✅ Done
-                                                    </span>
-                                                    :
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                        ⏳ Pending
-                                                    </span>
-                                                }
-                                            </td>
-                                            <td className="p-4 text-center">
-                                                {p.is_chosen ?
-                                                    <span className="text-xs font-bold text-red-600">Taken 🔴</span>
-                                                    :
-                                                    <span className="text-xs font-bold text-green-600">Avail 🟢</span>
-                                                }
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {dbPlayers.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-400">Pool is empty</td></tr>}
+                                    {dbPlayers.map(p => {
+                                        // Calculate who picked this person
+                                        const secretSanta = dbPlayers.find(giver => giver.my_santa_of_id === p.id);
+
+                                        return (
+                                            <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                                                <td className="p-4 font-bold text-gray-800">{p.name}</td>
+                                                <td className="p-4 text-gray-500">{p.phone}</td>
+                                                <td className="p-4 text-gray-500">{p.department}</td>
+
+                                                {/* Who they picked */}
+                                                <td className="p-4 text-center border-l border-r border-gray-100 bg-blue-50/30">
+                                                    {p.my_santa_of_id ? (
+                                                        <span className="font-bold text-blue-700">{p.my_santa_of_name}</span>
+                                                    ) : (
+                                                        <span className="text-gray-400 text-xs">- Not yet -</span>
+                                                    )}
+                                                </td>
+
+                                                {/* Who picked them */}
+                                                <td className="p-4 text-center border-r border-gray-100 bg-purple-50/30">
+                                                    {secretSanta ? (
+                                                        <span className="font-bold text-purple-700">{secretSanta.name}</span>
+                                                    ) : (
+                                                        <span className="text-gray-400 text-xs">- Not yet -</span>
+                                                    )}
+                                                </td>
+
+                                                <td className="p-4 text-center">
+                                                    {(p.my_santa_of_id && p.is_chosen) ?
+                                                        <span className="text-green-600 font-bold text-xs">✅ Complete</span> :
+                                                        <span className="text-orange-400 font-bold text-xs">⏳ In Progress</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {dbPlayers.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-gray-400">Pool is empty</td></tr>}
                                 </tbody>
                             </table>
                         </div>
