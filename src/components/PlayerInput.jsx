@@ -1,20 +1,32 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Upload, FileText } from 'lucide-react';
+import { Plus, Upload, Building2 } from 'lucide-react';
 import Papa from 'papaparse';
 import clsx from 'clsx';
+
+const DEPARTMENTS = [
+    "Development", "Sales", "Marketing", "HR", "Accounting", "Management", "Operations", "General"
+];
 
 const PlayerInput = ({ onAddPlayer, onImportCSV }) => {
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
+    const [department, setDepartment] = useState('General');
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef(null);
 
     const handleAdd = (e) => {
         e.preventDefault();
-        if (name.trim()) {
-            onAddPlayer({ name: name.trim(), phone: phone.trim() });
+        if (name.trim() && phone.trim()) {
+            onAddPlayer({
+                name: name.trim(),
+                phone: phone.trim(),
+                department: department
+            });
             setName('');
             setPhone('');
+            setDepartment('General');
+        } else {
+            alert("Name and Phone are required.");
         }
     };
 
@@ -49,26 +61,37 @@ const PlayerInput = ({ onAddPlayer, onImportCSV }) => {
             header: true,
             skipEmptyLines: true,
             complete: (results) => {
-                // Check if header exists, otherwise try to parse as array of arrays or assume first column is name
+                // Determine headers to find phone and dept columns if possible
                 let players = [];
-
                 if (results.meta.fields && results.meta.fields.length > 0) {
-                    // Has headers
-                    players = results.data.map(row => ({
-                        name: row.name || row.Name || Object.values(row)[0],
-                        email: row.email || row.Email || (Object.values(row)[1] && Object.values(row)[1].includes('@') ? Object.values(row)[1] : '')
-                    })).filter(p => p.name);
+                    // Try smart matching
+                    const headers = results.meta.fields.map(h => h.toLowerCase());
+                    const nameIdx = headers.findIndex(h => h.includes('name'));
+                    const phoneIdx = headers.findIndex(h => h.includes('phone') || h.includes('mobile'));
+                    const deptIdx = headers.findIndex(h => h.includes('dept') || h.includes('department'));
+
+                    players = results.data.map(row => {
+                        const vals = Object.values(row);
+                        return {
+                            name: nameIdx > -1 ? vals[nameIdx] : vals[0],
+                            phone: phoneIdx > -1 ? vals[phoneIdx] : (vals[1] || ""),
+                            department: deptIdx > -1 ? vals[deptIdx] : "General"
+                        };
+                    });
                 } else {
-                    // No headers, maybe simple list
+                    // Fallback no header: Name, Phone, Dept
                     players = results.data.map(row => {
                         const vals = Object.values(row);
                         return {
                             name: vals[0],
-                            email: vals[1] || ''
+                            phone: vals[1] || "",
+                            department: vals[2] || "General"
                         };
-                    }).filter(p => p.name);
+                    });
                 }
 
+                // Filter empty names
+                players = players.filter(p => p.name && p.name.trim() !== "");
                 onImportCSV(players);
             },
             error: (err) => {
@@ -79,31 +102,44 @@ const PlayerInput = ({ onAddPlayer, onImportCSV }) => {
     };
 
     return (
-        <div className="w-full max-w-2xl mx-auto bg-white/95 backdrop-blur rounded-xl shadow-xl p-6 mb-8 border-2 border-christmas-gold/30">
+        <div className="w-full max-w-3xl mx-auto bg-white/95 backdrop-blur rounded-xl shadow-xl p-6 mb-8 border-2 border-christmas-gold/30">
             <h2 className="text-2xl font-bold text-christmas-red mb-4 flex items-center gap-2">
-                <Plus className="text-christmas-green" /> Add Participants
+                <Plus className="text-christmas-green" /> Add Participants (Manual or CSV)
             </h2>
 
             {/* Manual Input */}
-            <form onSubmit={handleAdd} className="flex flex-col md:flex-row gap-3 mb-6">
-                <input
-                    type="text"
-                    placeholder="Full Name *"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-christmas-green focus:border-transparent outline-none"
-                />
-                <input
-                    type="tel"
-                    placeholder="Phone *"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-christmas-green focus:border-transparent outline-none"
-                />
+            <form onSubmit={handleAdd} className="flex flex-col md:flex-row gap-3 mb-6 items-start">
+                <div className="flex-1 w-full">
+                    <input
+                        type="text"
+                        placeholder="Full Name *"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-christmas-green focus:border-transparent outline-none"
+                    />
+                </div>
+                <div className="flex-1 w-full">
+                    <input
+                        type="tel"
+                        placeholder="Phone *"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-christmas-green focus:border-transparent outline-none"
+                    />
+                </div>
+                <div className="flex-1 w-full relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <select
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-christmas-green focus:border-transparent outline-none bg-white appearance-none"
+                    >
+                        {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                </div>
                 <button
                     type="submit"
-                    disabled={!name.trim()}
-                    className="bg-christmas-green text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="bg-christmas-green text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-800 transition-colors flex items-center justify-center gap-2 w-full md:w-auto mt-1 md:mt-0"
                 >
                     <Plus size={20} /> Add
                 </button>
@@ -146,7 +182,7 @@ const PlayerInput = ({ onAddPlayer, onImportCSV }) => {
                         Click to upload or drag & drop CSV
                     </p>
                     <p className="text-xs text-gray-400">
-                        Format: name, email (optional)
+                        Format: Name, Phone, Department (Optional)
                     </p>
                 </div>
             </div>

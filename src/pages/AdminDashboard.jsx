@@ -64,15 +64,17 @@ const AdminDashboard = () => {
     };
 
     const handleAddStaging = (player) => {
-        // Validation logic similar to previous (local check only for immediate feedback)
+        // Validation with Department
         const pName = player.name.trim();
         const pPhone = player.phone ? player.phone.trim() : "";
+        const pDept = player.department || "General";
 
         // Check Local Staging
         const nameExists = players.some(p => p.name.toLowerCase() === pName.toLowerCase());
         if (nameExists) { alert(`❌ Name "${pName}" already in staging.`); return; }
 
-        setPlayers([...players, player]);
+        // Ensure Dept is saved
+        setPlayers([...players, { ...player, department: pDept }]);
     };
 
     const handleImportCSV = (newPlayers) => {
