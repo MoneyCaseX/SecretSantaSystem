@@ -51,14 +51,69 @@ const AdminDashboard = () => {
     };
 
     const handleAddStaging = (player) => {
+        // 1. Normalize inputs
+        const pName = player.name.trim();
+        const pPhone = player.phone ? player.phone.trim() : "";
+
+        // 2. Check Name Duplication (Local & DB)
+        const nameExists = players.some(p => p.name.toLowerCase() === pName.toLowerCase()) ||
+            dbPlayers.some(p => p.name.toLowerCase() === pName.toLowerCase());
+
+        if (nameExists) {
+            alert(`❌ Duplicate Error:\nThe name "${pName}" is already registered in the system.`);
+            return;
+        }
+
+        // 3. Check Phone Duplication (Local & DB)
+        const phoneExists = players.some(p => p.phone === pPhone) ||
+            dbPlayers.some(p => p.phone === pPhone);
+
+        if (phoneExists && pPhone !== "") {
+            alert(`❌ Duplicate Error:\nThe phone number "${pPhone}" is already assigned to another player.`);
+            return;
+        }
+
         setPlayers([...players, player]);
     };
 
     const handleImportCSV = (newPlayers) => {
-        // Simple de-dupe against local staging
-        const existingNames = new Set(players.map(p => p.name.toLowerCase()));
-        const unique = newPlayers.filter(p => !existingNames.has(p.name.toLowerCase()));
-        setPlayers([...players, ...unique]);
+        const errors = [];
+        const validNewPlayers = [];
+        const tempMergedList = [...dbPlayers, ...players, ...validNewPlayers]; // Helper to check against all
+
+        newPlayers.forEach(p => {
+            const pName = p.name ? p.name.trim() : "";
+            const pPhone = p.phone ? p.phone.trim() : ""; // Ensure CSV maps phone/email correctly in PlayerInput
+
+            if (!pName) return;
+
+            // Check Name
+            const nameExists = tempMergedList.some(existing => existing.name.toLowerCase() === pName.toLowerCase());
+            if (nameExists) {
+                errors.push(`Skipped "${pName}": Name duplicate.`);
+                return;
+            }
+
+            // Check Phone
+            if (pPhone) {
+                const phoneExists = tempMergedList.some(existing => existing.phone === pPhone);
+                if (phoneExists) {
+                    errors.push(`Skipped "${pName}": Phone ${pPhone} duplicate.`);
+                    return;
+                }
+            }
+
+            validNewPlayers.push(p);
+            tempMergedList.push(p); // Add to temp list for next iteration checks
+        });
+
+        if (errors.length > 0) {
+            alert(`⚠️ Import Report:\n${errors.slice(0, 10).join('\n')}${errors.length > 10 ? '\n...and more.' : ''}\n\n✅ Successfully added ${validNewPlayers.length} players.`);
+        } else if (validNewPlayers.length > 0) {
+            alert(`✅ Successfully imported ${validNewPlayers.length} unique players.`);
+        }
+
+        setPlayers([...players, ...validNewPlayers]);
     };
 
     const handleRemoveStaging = (index) => {
