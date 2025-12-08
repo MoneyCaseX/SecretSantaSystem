@@ -112,10 +112,10 @@ const AdminDashboard = () => {
     };
 
     return (
-        <div className="min-h-screen pb-20 bg-gray-50">
+        <div className="min-h-screen pb-20 bg-gradient-to-b from-christmas-red to-red-950">
             <Header />
             <div className="container mx-auto px-4 py-8">
-                <h2 className="text-3xl font-bold text-center text-christmas-red mb-6">Admin Control Center</h2>
+                <h2 className="text-3xl font-bold text-center text-white drop-shadow-md mb-6">Admin Control Center</h2>
 
                 {/* TABS */}
                 <div className="flex justify-center mb-8">

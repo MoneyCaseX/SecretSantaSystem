@@ -61,7 +61,7 @@ const UserPortal = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-red-50 to-green-50 flex flex-col">
+        <div className="min-h-screen bg-gradient-to-b from-christmas-red to-red-950 flex flex-col">
             <Header />
 
             <main className="flex-grow container mx-auto px-4 py-8 flex items-center justify-center">

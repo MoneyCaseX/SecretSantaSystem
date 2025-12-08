@@ -34,7 +34,7 @@ const RegisterAndJoin = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="min-h-screen bg-gradient-to-b from-christmas-red to-red-950 flex flex-col">
             <Header />
             <div className="flex-grow flex items-center justify-center px-4 py-8">
                 <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
