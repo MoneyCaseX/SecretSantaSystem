@@ -5,16 +5,16 @@ import clsx from 'clsx';
 
 const PlayerInput = ({ onAddPlayer, onImportCSV }) => {
     const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef(null);
 
     const handleAdd = (e) => {
         e.preventDefault();
         if (name.trim()) {
-            onAddPlayer({ name: name.trim(), email: email.trim() });
+            onAddPlayer({ name: name.trim(), phone: phone.trim() });
             setName('');
-            setEmail('');
+            setPhone('');
         }
     };
 
@@ -88,16 +88,16 @@ const PlayerInput = ({ onAddPlayer, onImportCSV }) => {
             <form onSubmit={handleAdd} className="flex flex-col md:flex-row gap-3 mb-6">
                 <input
                     type="text"
-                    placeholder="Name *"
+                    placeholder="Full Name *"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-christmas-green focus:border-transparent outline-none"
                 />
                 <input
-                    type="email"
-                    placeholder="Email (Optional)"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    type="tel"
+                    placeholder="Phone *"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-christmas-green focus:border-transparent outline-none"
                 />
                 <button
