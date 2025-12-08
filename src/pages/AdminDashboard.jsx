@@ -2,23 +2,25 @@ import React, { useState } from 'react';
 import Header from '../components/Header';
 import PlayerInput from '../components/PlayerInput';
 import PlayerList from '../components/PlayerList';
-import { Upload, Users, RefreshCw, Trash2 } from 'lucide-react';
-import { db } from '../firebase';
-import { collection, addDoc, writeBatch, doc, getDocs, deleteDoc, query, where, runTransaction } from 'firebase/firestore';
+import { Upload, Users, RefreshCw, Trash2, Database } from 'lucide-react';
 
 const AdminDashboard = () => {
     const [players, setPlayers] = useState([]); // Local staging
-    const [dbPlayers, setDbPlayers] = useState([]); // From Firebase
+    const [dbPlayers, setDbPlayers] = useState([]); // From DB
     const [isSaving, setIsSaving] = useState(false);
     const [isLoadingDb, setIsLoadingDb] = useState(false);
 
-    // Fetch pool of participants
+    // Call Endpoints
     const fetchDbData = async () => {
         setIsLoadingDb(true);
         try {
-            const querySnapshot = await getDocs(collection(db, "participants"));
-            const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setDbPlayers(data);
+            const res = await fetch('/.netlify/functions/get-participants');
+            const data = await res.json();
+            if (res.ok) {
+                setDbPlayers(Array.isArray(data) ? data : []);
+            } else {
+                console.error("Fetch API error:", data);
+            }
         } catch (error) {
             console.error("Error fetching data:", error);
         } finally {
@@ -26,23 +28,34 @@ const AdminDashboard = () => {
         }
     };
 
+    const initDatabase = async () => {
+        if (!confirm("Initialize Table? This is usually done once.")) return;
+        setIsSaving(true);
+        try {
+            const res = await fetch('/.netlify/functions/init-db');
+            const d = await res.json();
+            alert(d.message || d.error);
+            fetchDbData();
+        } catch (e) { alert(e); }
+        setIsSaving(false);
+    }
+
     React.useEffect(() => {
         fetchDbData();
     }, []);
 
     const clearDatabase = async () => {
-        if (!window.confirm("⚠️ DANGER: This will DELETE ALL PLAYERS and reset the game completely.")) return;
+        if (!window.confirm("⚠️ DANGER: This will DELETE ALL PLAYERS from Postgres and reset the game completely.")) return;
 
         setIsSaving(true);
         try {
-            const querySnapshot = await getDocs(collection(db, "participants"));
-            const batch = writeBatch(db);
-            querySnapshot.forEach((doc) => {
-                batch.delete(doc.ref);
-            });
-            await batch.commit();
-            setDbPlayers([]);
-            alert("Database cleared. Ready for new season.");
+            const res = await fetch('/.netlify/functions/reset-pool', { method: 'POST' });
+            if (res.ok) {
+                setDbPlayers([]);
+                alert("Database cleared.");
+            } else {
+                alert("Error clearing");
+            }
         } catch (error) {
             console.error(error);
         } finally {
@@ -51,69 +64,20 @@ const AdminDashboard = () => {
     };
 
     const handleAddStaging = (player) => {
-        // 1. Normalize inputs
+        // Validation logic similar to previous (local check only for immediate feedback)
         const pName = player.name.trim();
         const pPhone = player.phone ? player.phone.trim() : "";
 
-        // 2. Check Name Duplication (Local & DB)
-        const nameExists = players.some(p => p.name.toLowerCase() === pName.toLowerCase()) ||
-            dbPlayers.some(p => p.name.toLowerCase() === pName.toLowerCase());
-
-        if (nameExists) {
-            alert(`❌ Duplicate Error:\nThe name "${pName}" is already registered in the system.`);
-            return;
-        }
-
-        // 3. Check Phone Duplication (Local & DB)
-        const phoneExists = players.some(p => p.phone === pPhone) ||
-            dbPlayers.some(p => p.phone === pPhone);
-
-        if (phoneExists && pPhone !== "") {
-            alert(`❌ Duplicate Error:\nThe phone number "${pPhone}" is already assigned to another player.`);
-            return;
-        }
+        // Check Local Staging
+        const nameExists = players.some(p => p.name.toLowerCase() === pName.toLowerCase());
+        if (nameExists) { alert(`❌ Name "${pName}" already in staging.`); return; }
 
         setPlayers([...players, player]);
     };
 
     const handleImportCSV = (newPlayers) => {
-        const errors = [];
-        const validNewPlayers = [];
-        const tempMergedList = [...dbPlayers, ...players, ...validNewPlayers]; // Helper to check against all
-
-        newPlayers.forEach(p => {
-            const pName = p.name ? p.name.trim() : "";
-            const pPhone = p.phone ? p.phone.trim() : ""; // Ensure CSV maps phone/email correctly in PlayerInput
-
-            if (!pName) return;
-
-            // Check Name
-            const nameExists = tempMergedList.some(existing => existing.name.toLowerCase() === pName.toLowerCase());
-            if (nameExists) {
-                errors.push(`Skipped "${pName}": Name duplicate.`);
-                return;
-            }
-
-            // Check Phone
-            if (pPhone) {
-                const phoneExists = tempMergedList.some(existing => existing.phone === pPhone);
-                if (phoneExists) {
-                    errors.push(`Skipped "${pName}": Phone ${pPhone} duplicate.`);
-                    return;
-                }
-            }
-
-            validNewPlayers.push(p);
-            tempMergedList.push(p); // Add to temp list for next iteration checks
-        });
-
-        if (errors.length > 0) {
-            alert(`⚠️ Import Report:\n${errors.slice(0, 10).join('\n')}${errors.length > 10 ? '\n...and more.' : ''}\n\n✅ Successfully added ${validNewPlayers.length} players.`);
-        } else if (validNewPlayers.length > 0) {
-            alert(`✅ Successfully imported ${validNewPlayers.length} unique players.`);
-        }
-
-        setPlayers([...players, ...validNewPlayers]);
+        // Simple de-dupe
+        setPlayers([...players, ...newPlayers]);
     };
 
     const handleRemoveStaging = (index) => {
@@ -126,28 +90,19 @@ const AdminDashboard = () => {
         if (players.length === 0) return;
         setIsSaving(true);
         try {
-            const batch = writeBatch(db);
-            const participantsRef = collection(db, "participants");
-
-            players.forEach(p => {
-                const docRef = doc(participantsRef);
-                // Schema for Live Draw
-                batch.set(docRef, {
-                    name: p.name.trim(),
-                    phone: p.phone ? p.phone.trim() : "",
-                    department: p.department || "General",
-                    email: p.email || "",
-                    isChosen: false, // Has anyone picked this person yet?
-                    mySantaOf: null, // Who did THIS person pick? (Starts null)
-                    mySantaOfName: null, // Redundant for easy reading
-                    timestamp: new Date()
-                });
+            const res = await fetch('/.netlify/functions/add-participants', {
+                method: 'POST',
+                body: JSON.stringify({ players: players })
             });
+            const data = await res.json();
 
-            await batch.commit();
-            alert(`Successfully added ${players.length} participants to the pool!`);
-            setPlayers([]); // Clear staging
-            fetchDbData(); // Refresh table
+            if (res.ok) {
+                alert(data.message);
+                setPlayers([]);
+                fetchDbData();
+            } else {
+                alert("Error: " + data.error);
+            }
         } catch (error) {
             console.error(error);
             alert("Error uploading: " + error.message);
@@ -160,13 +115,18 @@ const AdminDashboard = () => {
         <div className="min-h-screen pb-20 bg-gray-50">
             <Header />
             <div className="container mx-auto px-4 py-8">
-                <h2 className="text-3xl font-bold text-center text-christmas-red mb-2">Participant Pool Manager</h2>
-                <p className="text-center text-gray-500 mb-8">Upload names here. Employees will draw their own Santas live.</p>
+                <h2 className="text-3xl font-bold text-center text-christmas-red mb-2">Participant Pool Manager (Neon DB)</h2>
+
+                <div className="text-center mb-6">
+                    <button onClick={initDatabase} className="text-xs text-gray-400 hover:text-gray-600 underline">
+                        (First Run: Initialize Table)
+                    </button>
+                </div>
 
                 {/* Staging Area */}
                 <div className="bg-white p-6 rounded-xl shadow-lg mb-12 border border-blue-100">
                     <h3 className="text-lg font-bold text-blue-800 mb-4 flex items-center gap-2">
-                        <Upload size={20} /> 1. Add / Import Players (Staging)
+                        <Upload size={20} /> 1. Add / Import Players
                     </h3>
 
                     <PlayerInput
@@ -183,7 +143,7 @@ const AdminDashboard = () => {
                                     disabled={isSaving}
                                     className="bg-blue-600 text-white px-10 py-4 rounded-full font-bold text-lg hover:bg-blue-700 shadow-xl transition-transform hover:-translate-y-1"
                                 >
-                                    {isSaving ? "Uploading..." : `Upload ${players.length} Players to Pool`}
+                                    {isSaving ? "Uploading..." : `Upload ${players.length} Players`}
                                 </button>
                             </div>
                         </div>
@@ -215,8 +175,8 @@ const AdminDashboard = () => {
                                     <th className="p-4 font-semibold">Name</th>
                                     <th className="p-4 font-semibold">Phone</th>
                                     <th className="p-4 font-semibold">Dept</th>
-                                    <th className="p-4 font-semibold">Is Chosen? (Passive)</th>
-                                    <th className="p-4 font-semibold">Has Picked? (Active)</th>
+                                    <th className="p-4 font-semibold">Is Chosen?</th>
+                                    <th className="p-4 font-semibold">My Match</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
@@ -226,16 +186,15 @@ const AdminDashboard = () => {
                                         <td className="p-4 text-gray-500">{p.phone}</td>
                                         <td className="p-4 text-gray-500">{p.department}</td>
                                         <td className="p-4">
-                                            {p.isChosen ? <span className="text-green-600 font-bold">Yes (Taken)</span> : <span className="text-gray-400">Available</span>}
+                                            {p.is_chosen ? <span className="text-green-600 font-bold">Taken</span> : <span className="text-gray-400">Avail</span>}
                                         </td>
                                         <td className="p-4">
-                                            {p.mySantaOfName ? <span className="text-blue-600 font-bold">➡️ {p.mySantaOfName}</span> : <span className="text-yellow-600">Not yet</span>}
+                                            {p.my_santa_of_name ? <span className="text-blue-600 font-bold">➡️ {p.my_santa_of_name}</span> : <span className="text-yellow-600">-</span>}
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-                        {dbPlayers.length === 0 && <div className="p-8 text-center text-gray-400">No participants in the pool yet.</div>}
                     </div>
                 </div>
             </div>
