@@ -4,7 +4,9 @@ const sql = neon(process.env.SECRET_SANTA_DB_URL);
 
 exports.handler = async (event, context) => {
     try {
-        console.log("Creating table if not exists...");
+        console.log("Updating DB Schema...");
+
+        // 1. Ensure main participants table exists (already done)
         await sql`
       CREATE TABLE IF NOT EXISTS participants (
           id SERIAL PRIMARY KEY,
@@ -19,13 +21,23 @@ exports.handler = async (event, context) => {
       );
     `;
 
-        // Add unique constraint on phone if strictly desired, but we handle it in logic mostly.
-        // Let's optimize queries too
-        await sql`CREATE INDEX IF NOT EXISTS idx_phone ON participants(phone)`;
+        // 2. Create Pending Requests Table
+        await sql`
+      CREATE TABLE IF NOT EXISTS pending_registrations (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          phone TEXT NOT NULL,
+          department TEXT DEFAULT 'General',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+        // Index for speed
+        await sql`CREATE INDEX IF NOT EXISTS idx_pending_created ON pending_registrations(created_at)`;
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ message: "Table initialized successfully" }),
+            body: JSON.stringify({ message: "DB Schema Updated (Pending Table Added)" }),
         };
     } catch (error) {
         console.error("Init Error", error);
