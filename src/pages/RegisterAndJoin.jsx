@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import { UserPlus, CheckCircle, Building2 } from 'lucide-react';
-
-const DEPARTMENTS = [
-    "Development", "Sales", "Marketing", "HR", "Accounting", "Management", "Operations", "General"
-];
+import { DEPARTMENTS } from '../constants';
 
 const RegisterAndJoin = () => {
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
-    const [department, setDepartment] = useState('General');
+    const [department, setDepartment] = useState(DEPARTMENTS[0]);
     const [status, setStatus] = useState('idle'); // idle, submitting, success, error
 
     const handleSubmit = async (e) => {
