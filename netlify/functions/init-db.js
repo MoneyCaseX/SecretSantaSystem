@@ -2,7 +2,7 @@ import { neon } from '@neondatabase/serverless';
 
 const sql = neon(process.env.SECRET_SANTA_DB_URL);
 
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
     try {
         console.log("Updating DB Schema...");
 
