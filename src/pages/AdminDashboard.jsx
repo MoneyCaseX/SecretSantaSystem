@@ -19,6 +19,35 @@ const AdminDashboard = () => {
     const [editingId, setEditingId] = useState(null);
     const [editForm, setEditForm] = useState({ name: '', phone: '', department: '' });
 
+    // Pool Edit State
+    const [poolEditId, setPoolEditId] = useState(null);
+    const [poolEditForm, setPoolEditForm] = useState({ name: '', phone: '', department: '' });
+
+    // --- SETTINGS STATE ---
+    const [gameStatus, setGameStatus] = useState('CLOSED');
+    const [scheduleTime, setScheduleTime] = useState('');
+    const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+    // Fetch settings on load
+    React.useEffect(() => {
+        fetch('/.netlify/functions/get-game-status')
+            .then(res => res.json())
+            .then(data => {
+                setGameStatus(data.status);
+                setScheduleTime(data.startTime || '');
+            });
+    }, []);
+
+    const saveSettings = async () => {
+        setIsSavingSettings(true);
+        await fetch('/.netlify/functions/set-game-status', {
+            method: 'POST',
+            body: JSON.stringify({ status: gameStatus, startTime: scheduleTime })
+        });
+        setIsSavingSettings(false);
+        alert("Game Settings Updated!");
+    };
+
     // --- FETCH DATA ---
     const fetchData = async () => {
         setIsLoading(true);
@@ -97,6 +126,52 @@ const AdminDashboard = () => {
         setEditForm({ name: req.name, phone: req.phone, department: req.department });
     };
 
+    // --- MANAGE ACTIVE POOL EDIT/DELETE ---
+    const startPoolEdit = (player) => {
+        setPoolEditId(player.id);
+        setPoolEditForm({ name: player.name, phone: player.phone, department: player.department });
+    };
+
+    const handleUpdateParticipant = async (id) => {
+        setIsLoading(true);
+        try {
+            const res = await fetch('/.netlify/functions/update-participant', {
+                method: 'POST',
+                body: JSON.stringify({ id, ...poolEditForm })
+            });
+            if (res.ok) {
+                setPoolEditId(null);
+                fetchData();
+            } else {
+                alert("Error updating participant");
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteParticipant = async (id, name) => {
+        if (!window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) return;
+        setIsLoading(true);
+        try {
+            const res = await fetch('/.netlify/functions/delete-participant', {
+                method: 'POST',
+                body: JSON.stringify({ id })
+            });
+            if (res.ok) {
+                fetchData();
+            } else {
+                alert("Error deleting participant");
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     // --- LOCAL STAGING ---
     const handleAddStaging = (player) => {
         // ... (Same validation logic as before) ...
@@ -115,7 +190,49 @@ const AdminDashboard = () => {
         <div className="min-h-screen pb-20 bg-gradient-to-b from-christmas-red to-red-950">
             <Header />
             <div className="container mx-auto px-4 py-8">
-                <h2 className="text-3xl font-bold text-center text-white drop-shadow-md mb-6">Admin Control Center</h2>
+                <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-3xl font-bold text-white drop-shadow-md">Admin Dashboard</h2>
+                    {/* GAME CONTROLS */}
+                    <div className="bg-white rounded-lg p-4 shadow-xl flex gap-4 items-center">
+                        <div className="flex bg-gray-100 rounded-lg p-1">
+                            <button
+                                onClick={() => setGameStatus('OPEN')}
+                                className={`px-4 py-2 rounded-md font-bold text-xs transition-all ${gameStatus === 'OPEN' ? 'bg-green-600 text-white shadow' : 'text-gray-500 hover:bg-gray-200'}`}
+                            >
+                                🟢 OPEN
+                            </button>
+                            <button
+                                onClick={() => setGameStatus('CLOSED')}
+                                className={`px-4 py-2 rounded-md font-bold text-xs transition-all ${gameStatus === 'CLOSED' ? 'bg-red-600 text-white shadow' : 'text-gray-500 hover:bg-gray-200'}`}
+                            >
+                                🔴 CLOSED
+                            </button>
+                            <button
+                                onClick={() => setGameStatus('SCHEDULED')}
+                                className={`px-4 py-2 rounded-md font-bold text-xs transition-all ${gameStatus === 'SCHEDULED' ? 'bg-blue-600 text-white shadow' : 'text-gray-500 hover:bg-gray-200'}`}
+                            >
+                                🕒 TIMER
+                            </button>
+                        </div>
+
+                        {gameStatus === 'SCHEDULED' && (
+                            <input
+                                type="datetime-local"
+                                value={scheduleTime}
+                                onChange={e => setScheduleTime(e.target.value)}
+                                className="px-3 py-2 border rounded-lg text-sm bg-gray-50"
+                            />
+                        )}
+
+                        <button
+                            onClick={saveSettings}
+                            disabled={isSavingSettings}
+                            className="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-black transition-all"
+                        >
+                            {isSavingSettings ? '...' : 'Save'}
+                        </button>
+                    </div>
+                </div>
 
                 {/* TABS */}
                 <div className="flex justify-center mb-8">
@@ -138,11 +255,12 @@ const AdminDashboard = () => {
 
                 {activeTab === 'pool' && (
                     <div className="animate-fade-in-up">
-                        {/* Staging Area (Same as before) */}
+                        {/* Staging Area */}
                         <div className="bg-white p-6 rounded-xl shadow-lg mb-12 border border-blue-100">
                             <h3 className="text-lg font-bold text-blue-800 mb-4 flex items-center gap-2">
-                                <Upload size={20} /> Quick Add / Import
+                                <Upload size={20} /> Bulk Import / Staging
                             </h3>
+                            <div className="text-sm text-gray-500 mb-4">Use this area to upload CSVs or queue multiple users before saving to the database.</div>
                             <PlayerInput onAddPlayer={handleAddStaging} onImportCSV={handleImportCSV} />
                             {players.length > 0 && (
                                 <div className="mt-6">
@@ -158,10 +276,10 @@ const AdminDashboard = () => {
 
                         {/* Live List */}
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-bold text-xl text-gray-700">Current Participants</h3>
+                            <h3 className="font-bold text-xl text-white">Current Participants</h3>
                             <div className="flex gap-2">
                                 <button onClick={fetchData} className="p-2 bg-gray-100 rounded hover:bg-gray-200"><RefreshCw size={16} className={isLoading ? "animate-spin" : ""} /></button>
-                                <button onClick={clearDatabase} className="px-4 py-2 bg-red-100 text-red-600 rounded text-sm hover:bg-red-200">Reset All</button>
+                                <button onClick={clearDatabase} className="px-4 py-2 bg-red-100 text-red-600 rounded text-sm hover:bg-red-200 font-bold border border-red-200">Reset All</button>
                             </div>
                         </div>
                         <div className="bg-white shadow rounded-xl overflow-hidden">
@@ -174,6 +292,7 @@ const AdminDashboard = () => {
                                         <th className="p-4 text-center bg-blue-50 text-blue-900 border-l border-r border-white">➡️ Picked Who?</th>
                                         <th className="p-4 text-center bg-purple-50 text-purple-900 border-r border-white">⬅️ Picked By?</th>
                                         <th className="p-4 text-center">Status</th>
+                                        <th className="p-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y text-sm">
@@ -211,10 +330,35 @@ const AdminDashboard = () => {
                                                         <span className="text-orange-400 font-bold text-xs">⏳ In Progress</span>
                                                     }
                                                 </td>
+                                                <td className="p-4 text-right">
+                                                    {poolEditId === p.id ? (
+                                                        <div className="flex flex-col gap-2 bg-yellow-50 p-3 rounded border border-yellow-200 absolute right-10 mt-[-20px] shadow-lg z-10 w-64">
+                                                            <div className="font-bold text-xs text-gray-600 mb-1">Edit Participant</div>
+                                                            <input className="border p-2 rounded text-sm w-full mb-1" value={poolEditForm.name} onChange={e => setPoolEditForm({ ...poolEditForm, name: e.target.value })} placeholder="Name" />
+                                                            <input className="border p-2 rounded text-sm w-full mb-1" value={poolEditForm.phone} onChange={e => setPoolEditForm({ ...poolEditForm, phone: e.target.value })} placeholder="Phone" />
+                                                            <select className="border p-2 rounded text-sm w-full mb-1" value={poolEditForm.department} onChange={e => setPoolEditForm({ ...poolEditForm, department: e.target.value })}>
+                                                                {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                                                            </select>
+                                                            <div className="flex justify-end gap-2 mt-2">
+                                                                <button onClick={() => setPoolEditId(null)} className="text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300">Cancel</button>
+                                                                <button onClick={() => handleUpdateParticipant(p.id)} className="text-xs bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 font-bold">Save</button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex justify-end gap-2">
+                                                            <button onClick={() => startPoolEdit(p)} className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all border border-blue-200" title="Edit">
+                                                                <Edit size={16} />
+                                                            </button>
+                                                            <button onClick={() => handleDeleteParticipant(p.id, p.name)} className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all border border-red-200" title="Delete">
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </td>
                                             </tr>
                                         );
                                     })}
-                                    {dbPlayers.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-gray-400">Pool is empty</td></tr>}
+                                    {dbPlayers.length === 0 && <tr><td colSpan="7" className="p-8 text-center text-gray-400">Pool is empty</td></tr>}
                                 </tbody>
                             </table>
                         </div>
@@ -252,7 +396,7 @@ const AdminDashboard = () => {
                                                     </td>
                                                     <td className="p-3">
                                                         <select className="border p-2 rounded w-full" value={editForm.department} onChange={e => setEditForm({ ...editForm, department: e.target.value })}>
-                                                            {["General", "Sales", "Development", "HR", "Marketing", "Operations"].map(d => <option key={d} value={d}>{d}</option>)}
+                                                            {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
                                                         </select>
                                                     </td>
                                                     <td className="p-3 text-right space-x-2">
@@ -299,6 +443,69 @@ const AdminDashboard = () => {
                                     )}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* ADD PARTICIPANT MODAL */}
+                {showAddModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+                        <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md animate-fade-in-up">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-xl font-bold text-gray-800">Add New Participant</h3>
+                                <button onClick={() => setShowAddModal(false)} className="p-1 hover:bg-gray-100 rounded-full">
+                                    <X size={20} className="text-gray-500" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name</label>
+                                    <input
+                                        type="text"
+                                        className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                                        placeholder="e.g. John Doe"
+                                        value={addForm.name}
+                                        onChange={e => setAddForm({ ...addForm, name: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Phone Number</label>
+                                    <input
+                                        type="tel"
+                                        className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                                        placeholder="e.g. 01xxxxxxxxx"
+                                        value={addForm.phone}
+                                        onChange={e => setAddForm({ ...addForm, phone: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Department</label>
+                                    <select
+                                        className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white"
+                                        value={addForm.department}
+                                        onChange={e => setAddForm({ ...addForm, department: e.target.value })}
+                                    >
+                                        {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-3 mt-8">
+                                <button
+                                    onClick={() => setShowAddModal(false)}
+                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDirectAdd}
+                                    disabled={isSaving}
+                                    className="px-6 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                                >
+                                    {isSaving ? 'Adding...' : 'Add Participant'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

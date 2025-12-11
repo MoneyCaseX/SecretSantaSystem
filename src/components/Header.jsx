@@ -8,7 +8,7 @@ const Header = () => {
                 <img
                     src="/logo.png"
                     alt="Secret Santa Logo"
-                    className="w-64 h-auto drop-shadow-[0_0_20px_rgba(0,140,255,0.9)] animate-pulse bg-gray-200 rounded-xl p-4"
+                    className="w-64 h-auto drop-shadow-[0_0_20px_rgba(0,140,255,0.9)] animate-pulse bg-gray-200 rounded-full p-4"
                 />
             </div>
             <p className="text-xl opacity-90 font-light tracking-widest uppercase text-christmas-gold mt-4">

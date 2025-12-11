@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
+import Footer from '../components/Footer';
 import { UserPlus, CheckCircle, Building2 } from 'lucide-react';
 import { DEPARTMENTS } from '../constants';
 
@@ -119,6 +120,7 @@ const RegisterAndJoin = () => {
                     </div>
                 </div>
             </div>
+            <Footer />
         </div>
     );
 };
